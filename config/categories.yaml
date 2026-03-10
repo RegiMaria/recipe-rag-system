@@ -1,0 +1,40 @@
+# Categorias por Perfil Alimentar
+fitness:
+  - frango
+  - aveia
+  - batata doce
+  - whey
+  - claras
+  - pasta de amendoim
+
+vegetarian:
+  - tofu
+  - lentilha
+  - grão de bico
+  - cogumelos
+  - beringela
+  - ovos  # Opcional: dependendo se for ovolactovegetariano
+
+vegan:
+  - leite de coco
+  - linhaça
+  - nutritional yeast
+  - quinoa
+
+low_carb:
+  - couve-flor
+  - abobrinha
+  - amêndoas
+  - carne bovina
+
+# Categorias por Momento
+refeicoes_rapidas:
+  - 15 minutos
+  - 30 minutos
+  - lanche
+  - prático
+
+sobremesas:
+  - chocolate
+  - frutas
+  - sem açúcar

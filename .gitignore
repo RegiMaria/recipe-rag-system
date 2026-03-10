@@ -1,0 +1,11 @@
+# python
+venv/
+__pycache__/
+*.pyc
+
+# env
+.env
+
+# arquivos que não quero versionar
+create_boilerplate.py
+sites.md
