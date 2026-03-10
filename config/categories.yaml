@@ -1,40 +1,27 @@
-# Categorias por Perfil Alimentar
-fitness:
-  - frango
-  - aveia
-  - batata doce
-  - whey
-  - claras
-  - pasta de amendoim
 
-vegetarian:
-  - tofu
-  - lentilha
-  - grão de bico
-  - cogumelos
-  - beringela
-  - ovos  # Opcional: dependendo se for ovolactovegetariano
+categories:
+  vegetarian:
+    forbidden: ["carne", "frango", "peixe", "bacon", "presunto", "camarão", "linguiça", "salsicha"]
+    markers: ["tofu", "lentilha", "grão de bico", "cogumelos", "beringela", "ovos"]
+    
+  vegan:
+    forbidden: ["carne", "frango", "peixe", "leite", "ovo", "mel", "queijo", "manteiga", "creme de leite", "iogurte"]
+    markers: ["leite de coco", "leite de amêndoas", "levedura nutricional", "linçaça", "quinoa"]
 
-vegan:
-  - leite de coco
-  - linhaça
-  - nutritional yeast
-  - quinoa
+  fitness:
+    markers: ["frango", "aveia", "batata doce", "whey", "claras", "pasta de amendoim", "peito de peru"]
+    
+  low_carb:
+    forbidden: ["açúcar", "farinha de trigo", "arroz", "batata", "pão", "macarrão"]
+    markers: ["couve-flor", "abobrinha", "amêndoas", "carne bovina", "farinha de amêndoas", "eritritol"]
 
-low_carb:
-  - couve-flor
-  - abobrinha
-  - amêndoas
-  - carne bovina
+  sobremesas:
+    markers: ["chocolate", "frutas", "doce", "açúcar", "leite condensado"]
 
-# Categorias por Momento
-refeicoes_rapidas:
-  - 15 minutos
-  - 30 minutos
-  - lanche
-  - prático
 
-sobremesas:
-  - chocolate
-  - frutas
-  - sem açúcar
+# Adicionei regras semânticas (markers) e regras de exclusão (forbidden) para melhorar a classificação das receita
+# Implementamos uma lista com forbidden e markers
+# Se o crawler encontrar "frango com batata doce"
+# No modelo antigo, ela cairia em fitness (por causa do frango).
+# Mas e se o código não soubesse que "frango" é proibido em vegetarian?
+# Ele poderia classificar a mesma receita como as duas coisas por engano.
