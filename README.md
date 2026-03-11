@@ -1,4 +1,4 @@
-# Projeto: Rag recipe system
+## Projeto: Rag recipe system
 
 Descrição: 
 
@@ -58,6 +58,25 @@ Fluxo de Dados:
 | `config/sources.yaml` |  Lista de sites (Tudogostoso, Panelinha etc.) |
 | `config/categories.yaml` |  Categorias semânticas com **marcadores e exclusões** |
 
+# Arquitetura
+
+  Sites de Receitas (Em YAML config)
+          ↓
+    [Crawler Agent]      → Descobre URLs de receitas
+          ↓
+    [Collector Agent]    → Baixa o HTML das paginas
+          ↓
+    [Processing Agent]   → Extrai titulo, ingredientes, instrucoes
+          ↓
+    [Chunking Module]    → Divide em chunks semanticos
+          ↓
+    [Embedding Agent]    → Gera vetores (Vertex AI)
+          ↓
+    [Storage Layer]      → Salva no GCS + BigQuery
+          ↓
+    [RAG Pipeline]       → Busca + Gera resposta via LLM
+
+  Orquestracao: Apache Airflow DAG com agendamento diario.
 
 ## Tecnologias
 
@@ -66,6 +85,36 @@ Fluxo de Dados:
 - BigQuery
 - Vertex AI (embeddings e LLM)
 - Python 3.10+
+
+# Estrutura de diretórios
+
+recipe-rag-system/
+├── prompts/                      <-- Coração da IA
+│   ├── processing/               <-- Prompts para limpar e converter texto bruto em dados estruturados (JSON).
+│   │   ├── extract_structure.md
+│   │   └── clean_text.md
+│   └── rag/                      <-- Prompt principal que define a personalidade e as regras de resposta do assistente.
+│       └── answer_recipe_question.md
+├── agents/                       <-- Módulos autônomos com responsabilidades específicas
+│   ├── crawler_agent.py          <-- Navega em sites descobre novas URLs
+│   ├── collector_agent.py        <-- Realiza o download do conteúdo bruto (HTML) das páginas
+│   ├── processing_agent.py       <-- Orquestra a limpeza e a estruturação dos dados - Consome prompts/processing/ 
+│   ├── embedding_agent.py        <-- Transforma textos em vetores numéricos via Vertex AI
+│   └── rag_agent.py              <-- Agente/interface recebe a dúvida do usuário coordena a busca e resposta usando prompts/rag/
+├── rag/                          <-- Motor de inteligência da aplicação (by LangChain)
+│   ├── chunking.py               <-- Divide as receitas em pedaços menores e logicamente coerentes
+│   ├── retriever.py              <-- Realiza a busca por similaridade no banco vetorial
+│   ├── generator.py              <-- Onde o LangChain/Vertex AI realmente "roda"
+│   └── prompt_builder.py         <-- Utilitário que carrega e injeta variáveis nos arquivos de prompt `.md`
+├── storage/                      <-- Camada de persistência e infraestrutura de dados
+│   ├── gcs_client.py             <--Gerencia armazenamento de arquivos brutos e backups no Google Cloud Storage (Data Lake)
+│   └── bigquery_client.py        <-- Interface para o Data Warehouse - metadados - busca vetorial
+└── pipeline/                     <--Orquestração e automação
+    └── airflow_dag.py            <-- Define o fluxo de trabalho (DAG), garante coleta processamento automático e monitorado.
+
+
+
+
 
 # Os Agentes Especialistas
 
@@ -94,7 +143,7 @@ Pré-requisitos
 # Instalação
 Clone o repositório:
 
-`git clone https://github.com/seu-usuario/gastronomy-rag-agents.git`
+`git clone https://github.com/RegiMaria/recipe-rag-system.git`
 
 # Instale as dependências:
 
