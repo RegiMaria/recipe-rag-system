@@ -60,23 +60,33 @@ Fluxo de Dados:
 
 # Arquitetura
 
-  Sites de Receitas (em YAML config)
-↓
-[Crawler Agent] → Descobre URLs de receitas
-↓
-[Collector Agent] → Baixa o HTML das páginas
-↓
-[Processing Agent] → Extrai título, ingredientes e instruções
-↓
-[Chunking Module] → Divide em chunks semânticos
-↓
-[Embedding Agent] → Gera vetores (Vertex AI)
-↓
-[Storage Layer] → Salva no GCS + BigQuery
-↓
-[RAG Pipeline] → Busca + gera resposta via LLM
+## 🏗️ Arquitetura
 
-Orquestração: Apache Airflow DAG com agendamento diário.
+```text
+Sites de Receitas (config YAML)
+        │
+        ▼
+   [Crawler Agent]       → Descobre URLs de receitas
+        │
+        ▼
+   [Collector Agent]     → Baixa o HTML das páginas
+        │
+        ▼
+   [Processing Agent]    → Extrai título, ingredientes e instruções
+        │
+        ▼
+   [Chunking Module]     → Divide em chunks semânticos
+        │
+        ▼
+   [Embedding Agent]     → Gera vetores (Vertex AI)
+        │
+        ▼
+   [Storage Layer]       → Salva no GCS + BigQuery
+        │
+        ▼
+   [RAG Pipeline]        → Busca + gera resposta via LLM
+```
+**Orquestração:** Apache Airflow DAG com agendamento diário.
 
 ## Tecnologias
 
