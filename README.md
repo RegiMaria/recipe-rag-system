@@ -98,29 +98,39 @@ Sites de Receitas (config YAML)
 
 # Estrutura de diretórios
 
+## 📁 Estrutura de Diretórios
+
+```text
 recipe-rag-system/
-├── prompts/                      <-- Coração da IA
-│   ├── processing/               <-- Prompts para limpar e converter texto bruto em dados estruturados (JSON).
+│
+├── prompts/                         # Coração da IA
+│   ├── processing/                  # Prompts para limpar e converter texto bruto em dados estruturados
 │   │   ├── extract_structure.md
 │   │   └── clean_text.md
-│   └── rag/                      <-- Prompt principal que define a personalidade e as regras de resposta do assistente.
+│   │
+│   └── rag/                         # Prompt principal que define personalidade e regras do assistente
 │       └── answer_recipe_question.md
-├── agents/                       <-- Módulos autônomos com responsabilidades específicas
-│   ├── crawler_agent.py          <-- Navega em sites descobre novas URLs
-│   ├── collector_agent.py        <-- Realiza o download do conteúdo bruto (HTML) das páginas
-│   ├── processing_agent.py       <-- Orquestra a limpeza e a estruturação dos dados - Consome prompts/processing/ 
-│   ├── embedding_agent.py        <-- Transforma textos em vetores numéricos via Vertex AI
-│   └── rag_agent.py              <-- Agente/interface recebe a dúvida do usuário coordena a busca e resposta usando prompts/rag/
-├── rag/                          <-- Motor de inteligência da aplicação (by LangChain)
-│   ├── chunking.py               <-- Divide as receitas em pedaços menores e logicamente coerentes
-│   ├── retriever.py              <-- Realiza a busca por similaridade no banco vetorial
-│   ├── generator.py              <-- Onde o LangChain/Vertex AI realmente "roda"
-│   └── prompt_builder.py         <-- Utilitário que carrega e injeta variáveis nos arquivos de prompt `.md`
-├── storage/                      <-- Camada de persistência e infraestrutura de dados
-│   ├── gcs_client.py             <--Gerencia armazenamento de arquivos brutos e backups no Google Cloud Storage (Data Lake)
-│   └── bigquery_client.py        <-- Interface para o Data Warehouse - metadados - busca vetorial
-└── pipeline/                     <--Orquestração e automação
-    └── airflow_dag.py            <-- Define o fluxo de trabalho (DAG), garante coleta processamento automático e monitorado.
+│
+├── agents/                          # Módulos autônomos com responsabilidades específicas
+│   ├── crawler_agent.py             # Navega em sites e descobre novas URLs
+│   ├── collector_agent.py           # Baixa o conteúdo bruto (HTML) das páginas
+│   ├── processing_agent.py          # Limpa e estrutura os dados (usa prompts/processing)
+│   ├── embedding_agent.py           # Converte textos em vetores via Vertex AI
+│   └── rag_agent.py                 # Recebe a pergunta do usuário e coordena busca + resposta
+│
+├── rag/                             # Motor de inteligência da aplicação
+│   ├── chunking.py                  # Divide receitas em chunks semanticamente coerentes
+│   ├── retriever.py                 # Busca por similaridade no banco vetorial
+│   ├── generator.py                 # Execução do LLM via LangChain / Vertex AI
+│   └── prompt_builder.py            # Carrega prompts .md e injeta variáveis
+│
+├── storage/                         # Camada de persistência
+│   ├── gcs_client.py                # Armazenamento de arquivos no Google Cloud Storage
+│   └── bigquery_client.py           # Interface com BigQuery (metadados e busca vetorial)
+│
+└── pipeline/                        # Orquestração
+    └── airflow_dag.py               # DAG do Airflow para automação do pipeline
+```
 
 
 
