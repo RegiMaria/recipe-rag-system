@@ -9,3 +9,5 @@ __pycache__/
 # arquivos que não quero versionar
 create_boilerplate.py
 sites.md
+../revisoes/
+status_maturidade.md
