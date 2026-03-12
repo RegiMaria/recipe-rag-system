@@ -1,5 +1,30 @@
 sources:
-  - name: recipe_site_1
-    url: https://www.tudogostoso.com.br
-  - name: recipe_site_2
-    url: https://panelinha.com.br
+  - name: tudogostoso
+    url: https://www.tudogostoso.com.br/receitas
+
+  - name: panelinha
+    url: https://panelinha.com.br/home/receitas
+
+  - name: receitas_globo
+    url: https://receitas.globo.com/
+
+  - name: receiteria
+    url: https://www.receiteria.com.br/
+
+  - name: kitchen_24
+    url: https://www.24kitchen.pt/receitas
+
+  - name: sabor_intenso
+    url: https://www.saborintenso.com/chef/
+
+  - name: dona_benta
+    url: https://www.cozinhadonabenta.com.br/receitas-dona-benta/
+
+  - name: panelaterapia
+    url: https://panelaterapia.com/categoria/receitas/
+
+  - name: veganismo
+    url: https://veganismo.org.br/receitas-veganas/
+
+  - name: veganuary
+    url: https://veganuary.com/pt-br/receitas/
