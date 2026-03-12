@@ -1,5 +1,6 @@
 import requests
 from bs4 import BeautifulSoup
+from urllib.parse import urlparse
 import yaml
 import time
 
@@ -30,10 +31,13 @@ class CrawlerAgent:
                     # Pegamos todos os links
                     links = [a["href"] for a in soup.find_all("a", href=True)]
                     
+                    parsed = urlparse(source["url"])
+                    base_url = f"{parsed.scheme}://{parsed.netloc}"
+
                     for link in links:
                         # Tratar links relativos (ex: /receita/123 -> https://site.com/receita/123)
                         if link.startswith('/'):
-                            link = source["url"].rstrip('/') + link
+                            link = base_url + link
                         
                         if self.is_recipe_url(link):
                             all_urls.add(link)
