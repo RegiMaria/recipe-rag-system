@@ -22,6 +22,10 @@ class CrawlerAgent:
         """Filtra se a URL pertence ao padrão de receita da fonte."""
         return recipe_path.lower() in url.lower()
 
+    def _is_same_domain(self, url, base_url):
+        """Verifica se a URL pertence ao mesmo domínio da fonte."""
+        return urlparse(url).netloc == urlparse(base_url).netloc
+
     def _find_next_page(self, soup, base_url):
         """
         Detecta o link da próxima página de listagem.
@@ -29,6 +33,8 @@ class CrawlerAgent:
         Estratégias (em ordem de prioridade):
         1. <a rel="next"> ou <link rel="next"> — padrão semântico HTML
         2. Links cujo texto seja uma variação de "próxima" ou "next"
+
+        Apenas retorna URLs do mesmo domínio da fonte.
         """
         # 1. rel="next" em <a> ou <link>
         for tag in soup.find_all(["a", "link"], rel=True):
@@ -39,7 +45,8 @@ class CrawlerAgent:
                 href = tag["href"]
                 if href.startswith("/"):
                     href = base_url + href
-                return href
+                if self._is_same_domain(href, base_url):
+                    return href
 
         # 2. Link com texto "próxima" / "next" / "›" / "»"
         next_labels = {"próxima", "proxima", "next", "›", "»", "seguinte"}
@@ -49,7 +56,8 @@ class CrawlerAgent:
                 href = a["href"]
                 if href.startswith("/"):
                     href = base_url + href
-                return href
+                if self._is_same_domain(href, base_url):
+                    return href
 
         return None
 
@@ -80,7 +88,7 @@ class CrawlerAgent:
                 link = a["href"]
                 if link.startswith("/"):
                     link = base_url + link
-                if self.is_recipe_url(link, recipe_path):
+                if self._is_same_domain(link, base_url) and self.is_recipe_url(link, recipe_path):
                     found_urls.add(link)
 
             # Avança para a próxima página
