@@ -2,39 +2,49 @@ sources:
   - name: tudogostoso
     url: https://www.tudogostoso.com.br/receitas
     recipe_path: /receita/
+    max_pages: 10
 
   - name: panelinha
     url: https://panelinha.com.br/home/receitas
     recipe_path: /receita/
+    max_pages: 10
 
   - name: receitas_globo
     url: https://receitas.globo.com/
     recipe_path: /receitas/
+    max_pages: 10
 
   - name: receiteria
     url: https://www.receiteria.com.br/
     recipe_path: /receita/
+    max_pages: 10
 
   - name: kitchen_24
     url: https://www.24kitchen.pt/receitas
     recipe_path: /receitas/
+    max_pages: 10
 
   - name: sabor_intenso
     url: https://www.saborintenso.com/chef/
     recipe_path: /chef/
+    max_pages: 10
 
   - name: dona_benta
     url: https://www.cozinhadonabenta.com.br/receitas-dona-benta/
     recipe_path: /receitas-dona-benta/
+    max_pages: 10
 
   - name: panelaterapia
     url: https://panelaterapia.com/categoria/receitas/
     recipe_path: /categoria/receitas/
+    max_pages: 10
 
   - name: veganismo
     url: https://veganismo.org.br/receitas-veganas/
     recipe_path: /receitas-veganas/
+    max_pages: 10
 
   - name: veganuary
     url: https://veganuary.com/pt-br/receitas/
     recipe_path: /pt-br/receitas/
+    max_pages: 10
