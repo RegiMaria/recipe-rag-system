@@ -63,11 +63,12 @@ class CrawlerAgent:
 
     def _crawl_source(self, source):
         """Raspa todas as páginas de listagem de uma fonte, respeitando max_pages."""
-        found_urls = set()
+        found = {}  # url → {url, source_name} — dict evita duplicatas mantendo contexto
         parsed = urlparse(source["url"])
         base_url = f"{parsed.scheme}://{parsed.netloc}"
         recipe_path = source.get("recipe_path", "/receita/")
         max_pages = source.get("max_pages", 5)
+        source_name = source["name"]
 
         current_url = source["url"]
         page = 1
@@ -89,7 +90,7 @@ class CrawlerAgent:
                 if link.startswith("/"):
                     link = base_url + link
                 if self._is_same_domain(link, base_url) and self.is_recipe_url(link, recipe_path):
-                    found_urls.add(link)
+                    found[link] = {"url": link, "source_name": source_name}
 
             # Avança para a próxima página
             next_url = self._find_next_page(soup, base_url)
@@ -99,22 +100,29 @@ class CrawlerAgent:
             page += 1
             time.sleep(1)
 
-        return found_urls
+        return list(found.values())
 
     def crawl(self):
-        all_urls = set()
+        """
+        Retorna lista de dicts com url e source_name de cada receita encontrada.
+
+        Exemplo de saída:
+            [{"url": "https://panelinha.com.br/receita/pudim", "source_name": "panelinha"}, ...]
+        """
+        all_entries = {}  # url → entry — deduplicação global entre fontes
         for source in self.sources:
             print(f"--- Explorando: {source['name']} ---")
-            urls = self._crawl_source(source)
-            print(f"    {len(urls)} receitas encontradas em {source['name']}")
-            all_urls.update(urls)
+            entries = self._crawl_source(source)
+            for entry in entries:
+                all_entries[entry["url"]] = entry
+            print(f"    {len(entries)} receitas encontradas em {source['name']}")
 
-        return list(all_urls)
+        return list(all_entries.values())
 
 
 if __name__ == "__main__":
     crawler = CrawlerAgent()
-    urls = crawler.crawl()
-    print(f"\nTotal de receitas encontradas: {len(urls)}")
-    for u in urls[:5]:
-        print(f"  {u}")
+    entries = crawler.crawl()
+    print(f"\nTotal de receitas encontradas: {len(entries)}")
+    for e in entries[:5]:
+        print(f"  [{e['source_name']}] {e['url']}")
