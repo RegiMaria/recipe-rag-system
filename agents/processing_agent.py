@@ -48,7 +48,20 @@ class ProcessingAgent:
         
         return "Instruções não encontradas."
 
-    def process(self, html_content, url="", source_name="desconhecido"):
+    def process(self, entry: dict) -> dict:
+        """
+        Processa uma entrada do CollectorAgent.
+
+        Args:
+            entry: dict com {url, source_name, gcs_uri, timestamp, html}
+
+        Returns:
+            dict com {title, ingredients, instructions, metadata}
+        """
+        html_content = entry["html"]
+        url = entry.get("url", "")
+        source_name = entry.get("source_name", "desconhecido")
+
         soup = BeautifulSoup(html_content, "html.parser")
 
         # 1. Extrair Título (Tenta H1 primeiro, depois title tag)
@@ -71,24 +84,22 @@ class ProcessingAgent:
         }
 
 if __name__ == "__main__":
-    # Teste com um HTML simulado
-    mock_html = """
-    <html>
-        <h1>Frango Grelhado</h1>
-        <ul class="ingredients-list">
-            <li>2 peitos de frango</li>
-            <li>Sal a gosto</li>
-        </ul>
-        <div class="instructions">Tempere o frango e grelhe no fogo médio.</div>
-    </html>
-    """
+    mock_entry = {
+        "url": "https://tudogostoso.com.br/receita/123",
+        "source_name": "tudogostoso",
+        "html": """
+        <html>
+            <h1>Frango Grelhado</h1>
+            <ul class="ingredients-list">
+                <li>2 peitos de frango</li>
+                <li>Sal a gosto</li>
+            </ul>
+            <div class="instructions">Tempere o frango e grelhe no fogo médio.</div>
+        </html>
+        """
+    }
     processor = ProcessingAgent()
-    result = processor.process(mock_html, url="https://tudogostoso.com.br/receita/123", source_name="tudogostoso")
-    
-    import json
-    print(json.dumps(result, indent=2, ensure_ascii=False))
 
-    # Melhoria:
-    # criar uma função dentro do ProcessingAgent que analisa a lista de ingredientes
-    # e atribui automaticamente a categoria (ex: se tem "tofu", marca como "vegetarian")
-    #
+    import json
+    result = processor.process(mock_entry)
+    print(json.dumps(result, indent=2, ensure_ascii=False))
