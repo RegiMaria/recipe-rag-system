@@ -1,8 +1,11 @@
+import logging
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 import yaml
 import time
+
+logger = logging.getLogger(__name__)
 
 
 class CrawlerAgent:
@@ -74,12 +77,22 @@ class CrawlerAgent:
         page = 1
 
         while current_url and page <= max_pages:
-            print(f"  [p{page}/{max_pages}] {current_url}")
+            logger.info("[%s] p%d/%d — %s", source_name, page, max_pages, current_url)
             try:
                 response = requests.get(current_url, headers=self.headers, timeout=10)
                 response.raise_for_status()
-            except requests.RequestException as e:
-                print(f"  [ERROR] {e}")
+            except requests.Timeout:
+                logger.warning("[%s] Timeout em %s — abortando fonte", source_name, current_url)
+                break
+            except requests.ConnectionError:
+                logger.error("[%s] Falha de conexão em %s — abortando fonte", source_name, current_url)
+                break
+            except requests.HTTPError as e:
+                status = e.response.status_code
+                if 400 <= status < 500:
+                    logger.warning("[%s] HTTP %d em %s — página inválida, abortando paginação", source_name, status, current_url)
+                else:
+                    logger.error("[%s] HTTP %d em %s — erro no servidor, abortando fonte", source_name, status, current_url)
                 break
 
             soup = BeautifulSoup(response.text, "html.parser")
@@ -111,18 +124,23 @@ class CrawlerAgent:
         """
         all_entries = {}  # url → entry — deduplicação global entre fontes
         for source in self.sources:
-            print(f"--- Explorando: {source['name']} ---")
-            entries = self._crawl_source(source)
+            logger.info("--- Explorando: %s ---", source["name"])
+            try:
+                entries = self._crawl_source(source)
+            except Exception:
+                logger.exception("Falha inesperada ao processar fonte '%s' — continuando", source["name"])
+                continue
             for entry in entries:
                 all_entries[entry["url"]] = entry
-            print(f"    {len(entries)} receitas encontradas em {source['name']}")
+            logger.info("%d receitas encontradas em %s", len(entries), source["name"])
 
         return list(all_entries.values())
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     crawler = CrawlerAgent()
     entries = crawler.crawl()
-    print(f"\nTotal de receitas encontradas: {len(entries)}")
+    logger.info("Total de receitas encontradas: %d", len(entries))
     for e in entries[:5]:
-        print(f"  [{e['source_name']}] {e['url']}")
+        logger.info("  [%s] %s", e["source_name"], e["url"])
