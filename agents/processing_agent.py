@@ -48,9 +48,9 @@ class ProcessingAgent:
         
         return "Instruções não encontradas."
 
-    def process(self, html_content, url=""):
+    def process(self, html_content, url="", source_name="desconhecido"):
         soup = BeautifulSoup(html_content, "html.parser")
-        
+
         # 1. Extrair Título (Tenta H1 primeiro, depois title tag)
         title_tag = soup.find('h1') or soup.title
         title = self._clean_text(title_tag.get_text()) if title_tag else "Sem Título"
@@ -59,17 +59,14 @@ class ProcessingAgent:
         ingredients = self.extract_ingredients(soup)
         instructions = self.extract_instructions(soup)
 
-        # 3. Metadados básicos
-        source = "TudoGostoso" if "tudogostoso" in url else "Panelinha" if "panelinha" in url else "Desconhecido"
-
         return {
             "title": title,
             "ingredients": ingredients,
             "instructions": instructions,
             "metadata": {
-                "source": source,
+                "source": source_name,
                 "url": url,
-                "category": "geral" # Isso pode ser refinado pelo Classificador depois
+                "category": "geral"
             }
         }
 
@@ -86,7 +83,7 @@ if __name__ == "__main__":
     </html>
     """
     processor = ProcessingAgent()
-    result = processor.process(mock_html, url="https://tudogostoso.com.br/receita/123")
+    result = processor.process(mock_html, url="https://tudogostoso.com.br/receita/123", source_name="tudogostoso")
     
     import json
     print(json.dumps(result, indent=2, ensure_ascii=False))
