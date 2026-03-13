@@ -1,8 +1,9 @@
 import re
+import yaml
 from bs4 import BeautifulSoup
 
 class ProcessingAgent:
-    def __init__(self):
+    def __init__(self, categories_path: str = "config/categories.yaml"):
         # Seletores comuns para sites de receitas (ajustável no config futuramente)
         self.ingredient_selectors = [
             '.ingredients-list', '.it-ingredientes', '[itemprop="recipeIngredient"]',
@@ -12,6 +13,36 @@ class ProcessingAgent:
             '.instructions', '.it-preparo', '[itemprop="recipeInstructions"]',
             'ol.passo-a-passo', '.preparation-steps'
         ]
+
+        with open(categories_path, "r") as f:
+            self.categories = yaml.safe_load(f)["categories"]
+
+    def _classify(self, ingredients: list[str]) -> list[str]:
+        """
+        Classifica a receita com base nos ingredientes usando markers e forbidden
+        definidos em categories.yaml.
+
+        Regras:
+          - forbidden: qualquer ocorrência descarta a categoria
+          - markers:   ao menos uma ocorrência confirma a categoria
+          - Uma receita pode pertencer a múltiplas categorias
+
+        Retorna lista de categorias ou ["geral"] se nenhuma regra casar.
+        """
+        text = " ".join(ingredients).lower()
+        matched = []
+
+        for category, rules in self.categories.items():
+            forbidden = rules.get("forbidden", [])
+            markers = rules.get("markers", [])
+
+            if any(word in text for word in forbidden):
+                continue
+
+            if any(word in text for word in markers):
+                matched.append(category)
+
+        return matched if matched else ["geral"]
 
     def _clean_text(self, text):
         """Remove espaços excessivos e quebras de linha inúteis."""
@@ -79,27 +110,34 @@ class ProcessingAgent:
             "metadata": {
                 "source": source_name,
                 "url": url,
-                "category": "geral"
+                "category": self._classify(ingredients)
             }
         }
 
 if __name__ == "__main__":
-    mock_entry = {
-        "url": "https://tudogostoso.com.br/receita/123",
-        "source_name": "tudogostoso",
-        "html": """
-        <html>
-            <h1>Frango Grelhado</h1>
-            <ul class="ingredients-list">
-                <li>2 peitos de frango</li>
-                <li>Sal a gosto</li>
-            </ul>
-            <div class="instructions">Tempere o frango e grelhe no fogo médio.</div>
-        </html>
-        """
-    }
-    processor = ProcessingAgent()
-
     import json
-    result = processor.process(mock_entry)
-    print(json.dumps(result, indent=2, ensure_ascii=False))
+
+    tests = [
+        {
+            "label": "Frango grelhado → fitness",
+            "entry": {
+                "url": "https://tudogostoso.com.br/receita/123",
+                "source_name": "tudogostoso",
+                "html": "<html><h1>Frango Grelhado</h1><ul class='ingredients-list'><li>2 peitos de frango</li><li>batata doce</li></ul><div class='instructions'>Grelhe.</div></html>"
+            }
+        },
+        {
+            "label": "Tofu com cogumelos → vegetarian",
+            "entry": {
+                "url": "https://veganismo.org.br/receitas-veganas/tofu",
+                "source_name": "veganismo",
+                "html": "<html><h1>Tofu Salteado</h1><ul class='ingredients-list'><li>tofu</li><li>cogumelos</li><li>azeite</li></ul><div class='instructions'>Saltear.</div></html>"
+            }
+        },
+    ]
+
+    processor = ProcessingAgent()
+    for t in tests:
+        result = processor.process(t["entry"])
+        print(f"\n{t['label']}")
+        print(json.dumps(result["metadata"], indent=2, ensure_ascii=False))
