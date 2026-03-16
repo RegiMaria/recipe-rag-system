@@ -19,13 +19,32 @@ class ProcessingAgent:
         with open(categories_path, "r") as f:
             self.categories = yaml.safe_load(f)["categories"]
 
-    def _classify(self, ingredients: list[str]) -> list[str]: #  função que categoriza o produto
+    @staticmethod
+    def _matches_term(text: str, term: str) -> bool:
+        """
+        Busca `term` em `text` respeitando fronteiras de palavra Unicode.
+
+        Usa lookbehind/lookahead negativos de \w (Unicode-aware no Python 3),
+        o que garante que caracteres acentuados do português não sejam tratados
+        como separadores.
+
+        Exemplos:
+            "mel"      NÃO casa em "melancia"   (falso positivo evitado)
+            "leite"    NÃO casa em "leite de coco" *quando coberto por marker*
+            "frango"   casa em "2 peitos de frango"
+        """
+        pattern = r"(?<!\w)" + re.escape(term) + r"(?!\w)"
+        return bool(re.search(pattern, text, re.UNICODE | re.IGNORECASE))
+
+    def _classify(self, ingredients: list[str]) -> list[str]:
         """
         Classifica a receita com base nos ingredientes usando markers e forbidden
         definidos em categories.yaml.
 
         Regras:
-          - forbidden: qualquer ocorrência descarta a categoria
+          - forbidden: descarta a categoria, EXCETO se o termo proibido for
+                       subphrase de um marker presente (ex: "leite" é proibido
+                       em vegan, mas "leite de coco" é marker → não descarta)
           - markers:   ao menos uma ocorrência confirma a categoria
           - Uma receita pode pertencer a múltiplas categorias
 
@@ -35,13 +54,28 @@ class ProcessingAgent:
         matched = []
 
         for category, rules in self.categories.items():
-            forbidden = rules.get("forbidden", [])
-            markers = rules.get("markers", [])
+            forbidden_terms = rules.get("forbidden", [])
+            marker_terms   = rules.get("markers", [])
 
-            if any(word in text for word in forbidden):
+            # Verifica forbidden com word boundary e prioridade de phrase
+            is_forbidden = False
+            for term in forbidden_terms:
+                if not self._matches_term(text, term):
+                    continue
+                # Ignora se o termo proibido é subphrase de um marker que também está presente
+                # Ex: "leite" ⊂ "leite de coco" e "leite de coco" está no texto → não proibido
+                covered_by_marker = any(
+                    term in marker and self._matches_term(text, marker)
+                    for marker in marker_terms
+                )
+                if not covered_by_marker:
+                    is_forbidden = True
+                    break
+
+            if is_forbidden:
                 continue
 
-            if any(word in text for word in markers):
+            if any(self._matches_term(text, marker) for marker in marker_terms):
                 matched.append(category)
 
         return matched if matched else ["geral"]
@@ -76,7 +110,6 @@ class ProcessingAgent:
 
     def extract_ingredients(self, soup):
         """Busca a lista de ingredientes usando seletores ou busca por texto."""
-        ingredients = []
         # Tenta por seletores conhecidos
         for selector in self.ingredient_selectors:
             found = soup.select(selector)
