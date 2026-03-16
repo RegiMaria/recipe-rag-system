@@ -1,8 +1,12 @@
 import html
 import re
 import unicodedata
+import numpy as np
 import yaml
 from bs4 import BeautifulSoup
+
+import spacy
+from sentence_transformers import SentenceTransformer
 
 # ── Constantes para parsing de ingredientes ───────────────────────────────────
 # Unidades de medida em português (ordem: mais longas primeiro — evita match parcial)
@@ -73,6 +77,9 @@ _INGREDIENT_PATTERNS = [
 
 
 class ProcessingAgent:
+    # Limiar de similaridade coseno para considerar match semântico
+    SEMANTIC_THRESHOLD = 0.72
+
     def __init__(self, categories_path: str = "config/categories.yaml"):
         # Seletores comuns para sites de receitas (ajustável no config futuramente)
         self.ingredient_selectors = [
@@ -87,53 +94,116 @@ class ProcessingAgent:
         with open(categories_path, "r") as f:
             self.categories = yaml.safe_load(f)["categories"]
 
+        # ── NLP: lematização (spaCy pt) ───────────────────────────────────────
+        # Requer: python -m spacy download pt_core_news_sm
+        self._nlp = spacy.load("pt_core_news_sm")
+
+        # ── NLP: embeddings semânticos (sentence-transformers multilingual) ────
+        # Modelo leve (~120 MB) que cobre português bem
+        self._embedder = SentenceTransformer("paraphrase-multilingual-MiniLM-L12-v2")
+
+        # Pré-computa embeddings de todos os markers (evita recomputar a cada receita)
+        self._marker_embeddings: dict[str, dict[str, np.ndarray]] = {}
+        for category, rules in self.categories.items():
+            markers = rules.get("markers", [])
+            if markers:
+                vecs = self._embedder.encode(markers, convert_to_numpy=True, show_progress_bar=False)
+                self._marker_embeddings[category] = dict(zip(markers, vecs))
+
+    # ── Helpers NLP ──────────────────────────────────────────────────────────
+
+    def _lemmatize(self, text: str) -> str:
+        """Reduz o texto às formas lematizadas via spaCy.
+
+        Exemplos:
+            "frangos grelhados" → "frango grelhado"
+            "ovos cozidos"      → "ovo cozido"
+            "folhas de hortelã" → "folha de hortelã"
+        """
+        doc = self._nlp(text.lower())
+        return " ".join(token.lemma_ for token in doc)
+
+    @staticmethod
+    def _cosine_similarity(a: np.ndarray, b: np.ndarray) -> float:
+        """Similaridade coseno entre dois vetores."""
+        norm_a = np.linalg.norm(a)
+        norm_b = np.linalg.norm(b)
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
+        return float(np.dot(a, b) / (norm_a * norm_b))
+
+    # ── Matching ─────────────────────────────────────────────────────────────
+
     @staticmethod
     def _matches_term(text: str, term: str) -> bool:
         """
         Busca `term` em `text` respeitando fronteiras de palavra Unicode.
 
-        Usa lookbehind/lookahead negativos de \w (Unicode-aware no Python 3),
+        Usa lookbehind/lookahead negativos de \\w (Unicode-aware no Python 3),
         o que garante que caracteres acentuados do português não sejam tratados
         como separadores.
-
-        Exemplos:
-            "mel"      NÃO casa em "melancia"   (falso positivo evitado)
-            "leite"    NÃO casa em "leite de coco" *quando coberto por marker*
-            "frango"   casa em "2 peitos de frango"
         """
         pattern = r"(?<!\w)" + re.escape(term) + r"(?!\w)"
         return bool(re.search(pattern, text, re.UNICODE | re.IGNORECASE))
 
+    def _matches_lemma(self, lemma_text: str, term: str) -> bool:
+        """
+        Match após lematização de ambos os lados.
+
+        Casa "frangos" com o term "frango", "grelhados" com "grelhado", etc.
+        """
+        lemma_term = self._lemmatize(term)
+        return self._matches_term(lemma_text, lemma_term)
+
+    def _term_present(self, raw_text: str, lemma_text: str, term: str) -> bool:
+        """Retorna True se `term` está presente no texto (raw OU lemmatizado)."""
+        return self._matches_term(raw_text, term) or self._matches_lemma(lemma_text, term)
+
+    # ── Classificação ────────────────────────────────────────────────────────
+
     def _classify(self, ingredients: list[str]) -> list[str]:
         """
-        Classifica a receita com base nos ingredientes usando markers e forbidden
-        definidos em categories.yaml.
+        Classifica a receita com base nos ingredientes usando três camadas:
 
-        Regras:
-          - forbidden: descarta a categoria, EXCETO se o termo proibido for
-                       subphrase de um marker presente (ex: "leite" é proibido
-                       em vegan, mas "leite de coco" é marker → não descarta)
-          - markers:   ao menos uma ocorrência confirma a categoria
-          - Uma receita pode pertencer a múltiplas categorias
+        1. Lematização  — "frangos" casa com marker/forbidden "frango"
+        2. Word boundary — evita falsos positivos ("mel" ≠ "melancia")
+        3. Embeddings   — "filé de frango" ≈ "peito de frango" (score proporcional)
 
-        Retorna lista de categorias ou ["geral"] se nenhuma regra casar.
+        Scoring por categoria:
+          - Match exato ou via lemma   → +1.0 por marker
+          - Match semântico (≥ threshold) → +similaridade (0.72–1.0)
+          - Forbidden (raw ou lemma)   → descarta categoria
+              exceto se coberto por marker composto presente
+
+        Retorna categorias ordenadas por score decrescente, ou ["geral"].
         """
-        text = " ".join(ingredients).lower()
-        matched = []
+        if not ingredients:
+            return ["geral"]
+
+        raw_text   = " ".join(ingredients).lower()
+        lemma_text = " ".join(self._lemmatize(name) for name in ingredients)
+
+        # Embeddings dos ingredientes para matching semântico
+        ing_embeddings: np.ndarray = self._embedder.encode(
+            ingredients, convert_to_numpy=True, show_progress_bar=False
+        )
+
+        scores: dict[str, float] = {}
 
         for category, rules in self.categories.items():
             forbidden_terms = rules.get("forbidden", [])
-            marker_terms   = rules.get("markers", [])
+            marker_terms    = rules.get("markers", [])
 
-            # Verifica forbidden com word boundary e prioridade de phrase
+            # ── 1. Forbidden check (raw + lemma) ─────────────────────────────
             is_forbidden = False
             for term in forbidden_terms:
-                if not self._matches_term(text, term):
+                if not self._term_present(raw_text, lemma_text, term):
                     continue
-                # Ignora se o termo proibido é subphrase de um marker que também está presente
-                # Ex: "leite" ⊂ "leite de coco" e "leite de coco" está no texto → não proibido
+
+                # Ignora se o termo proibido é subphrase de um marker presente
+                # Ex: "leite" ⊂ "leite de coco" e "leite de coco" está no texto
                 covered_by_marker = any(
-                    term in marker and self._matches_term(text, marker)
+                    term in marker and self._term_present(raw_text, lemma_text, marker)
                     for marker in marker_terms
                 )
                 if not covered_by_marker:
@@ -143,10 +213,37 @@ class ProcessingAgent:
             if is_forbidden:
                 continue
 
-            if any(self._matches_term(text, marker) for marker in marker_terms):
-                matched.append(category)
+            # ── 2. Scoring de markers ─────────────────────────────────────────
+            score = 0.0
+            cat_marker_embs = self._marker_embeddings.get(category, {})
 
-        return matched if matched else ["geral"]
+            for marker in marker_terms:
+                # Match exato ou via lemma → pontuação máxima
+                if self._term_present(raw_text, lemma_text, marker):
+                    score += 1.0
+                    continue
+
+                # Match semântico — pontuação proporcional à similaridade
+                marker_emb = cat_marker_embs.get(marker)
+                if marker_emb is not None and len(ing_embeddings) > 0:
+                    sims = np.array([
+                        self._cosine_similarity(marker_emb, ing_emb)
+                        for ing_emb in ing_embeddings
+                    ])
+                    best_sim = float(sims.max())
+                    if best_sim >= self.SEMANTIC_THRESHOLD:
+                        score += best_sim  # ex: 0.85 pontos por match semântico
+
+            if score > 0:
+                scores[category] = score
+
+        if not scores:
+            return ["geral"]
+
+        # Ordena por score decrescente — mais marcadores = mais confiança
+        return [cat for cat, _ in sorted(scores.items(), key=lambda x: -x[1])]
+
+    # ── Limpeza de texto ─────────────────────────────────────────────────────
 
     def _clean_text(self, text: str) -> str:
         """
@@ -154,10 +251,10 @@ class ProcessingAgent:
 
         1. Decodifica entidades HTML  : &amp; → &, &nbsp; → espaço, ½ → ½
         2. Normalização Unicode NFKC  : unifica formas compostas/decompostas,
-                                        converte \xa0/\u202f em espaço normal
-        3. Remove caracteres de controle invisíveis (\x00-\x08, \x0B-\x1F, \x7F-\x9F)
-           mantendo \t (\x09), \n (\x0A), \r (\x0D) para o passo seguinte
-        4. Colapsa todo whitespace restante (\t, \n, \r, espaços múltiplos) em espaço único
+                                        converte \\xa0/\\u202f em espaço normal
+        3. Remove caracteres de controle invisíveis (\\x00-\\x08, \\x0B-\\x1F, \\x7F-\\x9F)
+           mantendo \\t (\\x09), \\n (\\x0A), \\r (\\x0D) para o passo seguinte
+        4. Colapsa todo whitespace restante (\\t, \\n, \\r, espaços múltiplos) em espaço único
         """
         if not text:
             return ""
@@ -175,6 +272,8 @@ class ProcessingAgent:
         text = re.sub(r"\s+", " ", text)
 
         return text.strip()
+
+    # ── Parsing de ingrediente ───────────────────────────────────────────────
 
     def _parse_ingredient(self, text: str) -> dict:
         """
@@ -212,12 +311,13 @@ class ProcessingAgent:
         # Fallback: nenhum padrão casou — texto completo como nome
         return {**base, "nome": cleaned}
 
+    # ── Extração HTML ────────────────────────────────────────────────────────
+
     def extract_ingredients(self, soup) -> list[dict]:
         """
         Busca a lista de ingredientes e retorna itens estruturados
         com {quantidade, unidade, nome, texto_original}.
         """
-        # Tenta por seletores conhecidos
         for selector in self.ingredient_selectors:
             found = soup.select(selector)
             if found:
@@ -243,6 +343,8 @@ class ProcessingAgent:
 
         return ""
 
+    # ── Pipeline principal ───────────────────────────────────────────────────
+
     def process(self, entry: dict) -> dict:
         """
         Processa uma entrada do CollectorAgent.
@@ -259,7 +361,7 @@ class ProcessingAgent:
 
         soup = BeautifulSoup(html_content, "html.parser")
 
-        # 1. Extrair Título (Tenta H1 primeiro, depois title tag)
+        # 1. Extrair Título
         title_tag = soup.find('h1') or soup.title
         title = self._clean_text(title_tag.get_text()) if title_tag else "Sem Título"
 
@@ -280,6 +382,7 @@ class ProcessingAgent:
                 "category": self._classify(ingredient_names)
             }
         }
+
 
 if __name__ == "__main__":
     import json
@@ -306,8 +409,23 @@ if __name__ == "__main__":
         parsed = processor._parse_ingredient(s)
         print(f"  {s!r:45} → qtd={parsed['quantidade']!r:12} unid={parsed['unidade']!r:22} nome={parsed['nome']!r}")
 
-    # ── Teste 2: pipeline completo com classificação ──────────────────────────
-    print("\n=== process() ===")
+    # ── Teste 2: NLP — lemmatização e plurais ─────────────────────────────────
+    print("\n=== _classify — NLP (lemma + semântica) ===")
+    nlp_tests = [
+        ("Plurais/formas flexionadas", ["frangos grelhados", "batatas doces", "claras de ovos"]),
+        ("Semântica: filé ≈ peito de frango", ["filé de frango", "arroz integral"]),
+        ("Ingrediente composto: leite de coco (não forbidden)", ["leite de coco", "linçaça"]),
+        ("Forbidden via lemma: ovos → vegetarian negado", ["ovos mexidos", "tofu"]),
+        ("Score múltiplos markers fitness", ["peito de frango", "batata doce", "aveia", "claras"]),
+    ]
+    for label, ings in nlp_tests:
+        cats = processor._classify(ings)
+        print(f"  {label}")
+        print(f"    ingredientes : {ings}")
+        print(f"    categorias   : {cats}\n")
+
+    # ── Teste 3: pipeline completo ────────────────────────────────────────────
+    print("=== process() ===")
     tests = [
         {
             "label": "Frango grelhado → fitness",

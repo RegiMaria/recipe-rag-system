@@ -7,3 +7,5 @@ requests
 pandas
 numpy
 PyYAML
+spacy>=3.7
+sentence-transformers>=3.0
