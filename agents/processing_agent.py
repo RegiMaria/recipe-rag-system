@@ -1,4 +1,6 @@
+import html
 import re
+import unicodedata
 import yaml
 from bs4 import BeautifulSoup
 
@@ -17,7 +19,7 @@ class ProcessingAgent:
         with open(categories_path, "r") as f:
             self.categories = yaml.safe_load(f)["categories"]
 
-    def _classify(self, ingredients: list[str]) -> list[str]:
+    def _classify(self, ingredients: list[str]) -> list[str]: #  função que categoriza o produto
         """
         Classifica a receita com base nos ingredientes usando markers e forbidden
         definidos em categories.yaml.
@@ -44,10 +46,33 @@ class ProcessingAgent:
 
         return matched if matched else ["geral"]
 
-    def _clean_text(self, text):
-        """Remove espaços excessivos e quebras de linha inúteis."""
-        if not text: return ""
-        return re.sub(r'\s+', ' ', text).strip()
+    def _clean_text(self, text: str) -> str:
+        """
+        Pipeline de limpeza em 4 camadas:
+
+        1. Decodifica entidades HTML  : &amp; → &, &nbsp; → espaço, ½ → ½
+        2. Normalização Unicode NFKC  : unifica formas compostas/decompostas,
+                                        converte \xa0/\u202f em espaço normal
+        3. Remove caracteres de controle invisíveis (\x00-\x08, \x0B-\x1F, \x7F-\x9F)
+           mantendo \t (\x09), \n (\x0A), \r (\x0D) para o passo seguinte
+        4. Colapsa todo whitespace restante (\t, \n, \r, espaços múltiplos) em espaço único
+        """
+        if not text:
+            return ""
+
+        # 1. Entidades HTML (&amp; &nbsp; &frac12; &#189; etc.)
+        text = html.unescape(text)
+
+        # 2. Unicode NFKC: \xa0 → espaço, café(NFC) == café(NFD), ﬁ → fi
+        text = unicodedata.normalize("NFKC", text)
+
+        # 3. Caracteres de controle e invisíveis (zero-width, soft-hyphen, BOM…)
+        text = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F\u00AD\u200B-\u200D\uFEFF]", "", text)
+
+        # 4. Colapsa whitespace múltiplo
+        text = re.sub(r"\s+", " ", text)
+
+        return text.strip()
 
     def extract_ingredients(self, soup):
         """Busca a lista de ingredientes usando seletores ou busca por texto."""
@@ -71,13 +96,13 @@ class ProcessingAgent:
         return []
 
     def extract_instructions(self, soup):
-        """Busca o modo de preparo."""
+        """Busca o modo de preparo. Retorna string vazia se não encontrado."""
         for selector in self.instruction_selectors:
             found = soup.select(selector)
             if found:
                 return self._clean_text(found[0].get_text(separator=" "))
-        
-        return "Instruções não encontradas."
+
+        return ""
 
     def process(self, entry: dict) -> dict:
         """
