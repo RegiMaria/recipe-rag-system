@@ -40,8 +40,9 @@ _UNITS = "|".join([
     r"q\.b\.",
 ])
 
-# Quantidade: inteiro, fração (1/2), misto (1 e 1/2), decimal (0,5), unicode (½ ¼ ¾ …)
-_RE_QTD  = r"(?P<quantidade>(?:\d+\s+e\s+)?\d+(?:[/,\.]\d+)?|[½¼¾⅓⅔⅛⅜⅝⅞])"
+# Quantidade: inteiro, fração (1/2), misto (1 e 1/2), decimal (0,5)
+# Frações unicode (½ ¼ ¾ …) são normalizadas para "1/2" etc. por _clean_text antes de chegarem aqui
+_RE_QTD  = r"(?P<quantidade>(?:\d+\s+e\s+)?\d+(?:[/,\.]\d+)?)"
 _RE_UNIT = r"(?P<unidade>" + _UNITS + r")"
 _RE_CONN = r"(?:\s+d[eo]s?\s+|\s+)"   # "de ", "da ", "do ", "das ", "dos " ou só espaço
 
@@ -263,7 +264,13 @@ class ProcessingAgent:
         text = html.unescape(text)
 
         # 2. Unicode NFKC: \xa0 → espaço, café(NFC) == café(NFD), ﬁ → fi
+        #    Efeito colateral: ½ → "1⁄2" (U+2044 FRACTION SLASH, não U+002F)
         text = unicodedata.normalize("NFKC", text)
+
+        # 2b. Normaliza FRACTION SLASH (U+2044) → SOLIDUS (U+002F)
+        #     Garante que "1⁄2", "3⁄4" etc. sejam tratados como "1/2", "3/4"
+        #     pelos padrões de _RE_QTD que usam [/,.]
+        text = text.replace("\u2044", "/")
 
         # 3. Caracteres de controle e invisíveis (zero-width, soft-hyphen, BOM…)
         text = re.sub(r"[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F\u00AD\u200B-\u200D\uFEFF]", "", text)
