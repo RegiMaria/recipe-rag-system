@@ -39,7 +39,7 @@ Fluxo de Dados:
 
 # Stack Tecnológica
 
-## 📦 Estrutura do Projeto
+# Estrutura do Projeto
 
 |  Caminho |  Propósito |
 |:-----------|:-------------|
@@ -59,8 +59,6 @@ Fluxo de Dados:
 | `config/categories.yaml` |  Categorias semânticas com **marcadores e exclusões** |
 
 # Arquitetura
-
-## 🏗️ Arquitetura
 
 ```text
 Sites de Receitas (config YAML)
@@ -88,7 +86,7 @@ Sites de Receitas (config YAML)
 ```
 **Orquestração:** Apache Airflow DAG com agendamento diário.
 
-## Tecnologias
+# Tecnologias
 
 - Apache Airflow
 - Google Cloud Storage (GCS)
@@ -97,8 +95,6 @@ Sites de Receitas (config YAML)
 - Python 3.10+
 
 # Estrutura de diretórios
-
-## 📁 Estrutura de Diretórios
 
 ```text
 recipe-rag-system/
@@ -131,10 +127,6 @@ recipe-rag-system/
 └── pipeline/                        # Orquestração
     └── airflow_dag.py               # DAG do Airflow para automação do pipeline
 ```
-
-
-
-
 
 # Os Agentes Especialistas
 
@@ -179,3 +171,20 @@ Clone o repositório:
 - Busca Semântica: Entendimento real de substituições de ingredientes e restrições alimentares.
 
 - Escalabilidade: Capacidade de processar milhões de receitas com baixo custo de busca via BigQuery Vector Search.
+
+## Roadmap & Prioridades
+
+Atualmente, o projeto segue o seguinte fluxo de desenvolvimento:
+
+- [x] **Fase 1: Extração e Limpeza (Local)**
+    - [x] Implementação do CollectorAgent (Scraping).
+    - [x] Desenvolvimento do ProcessingAgent (NLP com spaCy).
+    - [x] Validação de similaridade semântica local (Sentence-Transformers).
+- [ ] **Fase 2: Infraestrutura Cloud (GCP) - EM FOCO 🚀**
+    - [ ] Configuração do Google Cloud Storage (Data Lake).
+    - [ ] Modelagem e criação do Dataset no BigQuery.
+    - [ ] Migração do EmbeddingAgent para Vertex AI.
+- [ ] **Fase 3: Orquestração e Inteligência**
+    - [ ] Automação do pipeline com Apache Airflow.
+    - [ ] Implementação do RAG Agent (Retrieval Augmented Generation).
+    - [ ] Interface de consulta (Streamlit/FastAPI).
