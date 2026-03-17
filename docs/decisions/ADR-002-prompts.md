@@ -22,20 +22,20 @@ Arquitetura orientada  a prompts;
 :small_orange_diamond:Arquitetura atual -  antes de organizar prompts
 
 Sites de Receitas (YAML config)
-            ↓
-[Crawler Agent] → Descobre URLs de receitas
-↓
-[Collector Agent] → Baixa o HTML das paginas
-↓
-[Processing Agent] → Extrai titulo, ingredientes, instrucoes
-↓
-[Chunking Module] → Divide em chunks semanticos
-↓
-[Embedding Agent] → Gera vetores (Vertex AI)
-↓
-[Storage Layer] → Salva no GCS + BigQuery
-↓
-[RAG Pipeline] → Busca + Gera resposta via LLM
+    ↓
+Crawler Agent → Descobre URLs
+    ↓
+Collector Agent → Baixa HTML
+    ↓
+Processing Agent → Extrai dados
+    ↓
+Chunking Module → Divide em chunks
+    ↓
+Embedding Agent → Gera vetores
+    ↓
+Storage Layer → GCS + BigQuery
+    ↓
+RAG Pipeline → Busca + geração de resposta
 
 Orquestracao: Apache Airflow DAG com agendamento diario.
 

@@ -1,4 +1,4 @@
-# Architecture Decision Records#
+# Architecture Decision Records #
 ## ADR-003-NLP ##
 
 Data: 16-03-2026
@@ -19,15 +19,15 @@ Essa diferença impactava diretamente a qualidade do pipeline de dados.
 
 O uso de regex causava três falhas principais.
 
-1. Falso positivo na classificação
+**1. Falso positivo na classificação**
 
 `"ovo" encontrado dentro de "enovelado"`
 
 Resultado:
 
-receita classificada incorretamente
+`receita classificada incorretamente`
 
-2. Instruções extraídas como bloco único
+**2. Instruções extraídas como bloco único**
 
 Entrada:
 
@@ -41,7 +41,7 @@ Saída esperada:
 
 `["Misture", "Adicione", "Leve ao forno"]`
 
-3. Entidades HTML vazando para os dados
+**3. Entidades HTML vazando para os dados**
 
 Entrada:
 
@@ -55,6 +55,7 @@ Impacto no pipeline inteiro
 
 O problema não fica só no `ProcessingAgent`.
 
+```
 Dado sujo no ProcessingAgent
 ↓
 Embedding gerado sobre texto errado (EmbeddingAgent)
@@ -62,12 +63,14 @@ Embedding gerado sobre texto errado (EmbeddingAgent)
 Busca vetorial retorna resultados ruins (Vector Store)
 ↓
 RAGAgent responde com contexto incorreto
+```
 
 **Regra básica de pipelines de dados**
 
-Lixo entra → lixo sai
+`Lixo entra → lixo sai`
 
 Por isso NLP é a fundação da qualidade do pipeline.
+
 
 | Aspecto | Regex (atual) | NLP (proposto) |
 |---|---|---|
@@ -79,7 +82,7 @@ Por isso NLP é a fundação da qualidade do pipeline.
 
 A migração foi planejada em três níveis progressivos.
 
-Nível 1 — Correção imediata (sem nova dependência)
+**Nível 1 — Correção imediata (sem nova dependência)**
 
 Implementação simples usando Python padrão.
 
@@ -88,16 +91,16 @@ unicodedata.normalize("NFKC", text)
 re.search(r"\bmarker\b")
 ```
 Resolve:
-
-limpeza de entidades HTML
+```limpeza de entidades HTML
 
 correção de substring match
-
+```
 Impacto:
 
-classificação correta
+```classificação correta
 
 dados mais limpos
+```
 
 Esforço:
 
@@ -118,11 +121,14 @@ passos = [sent.text for sent in doc.sents]
 
 Resolve:
 
+```
 separação automática de sentenças
 
 instruções como lista de passos
+```
 
 Impacto:
+
 ```
 chunks melhores
 ↓
@@ -132,11 +138,12 @@ busca vetorial mais precisa
 ```
 
 Esforço:
+
 ```
 médio
 nova dependência + refatorar ProcessingAgent
 ```
-Nível 3 — NLP completo
+**Nível 3 — NLP completo**
 
 Pipeline totalmente semântico.
 ```
@@ -148,13 +155,15 @@ text-embedding-004
 ```
 Resolve:
 
+```
 extração estruturada de ingredientes
 
 similaridade semântica real
+```
 
 Impacto:
 
-```RAGAgent passa a responder com contexto confiável```
+`RAGAgent passa a responder com contexto confiável`
 
 Esforço:
 ```

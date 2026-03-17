@@ -1,9 +1,9 @@
 # Architecture Decision Records #
-## ADR-001-angChain ##
+## ADR-001-langChain ##
 
 Data: 10-03-2026
 
-## 1.Uso de LangChain:##
+## 1.Uso de LangChain: ##
 
 O Langchain é o motor de execução dos agentes.
 

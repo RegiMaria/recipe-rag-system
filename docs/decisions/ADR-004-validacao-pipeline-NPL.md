@@ -1,9 +1,9 @@
 # Architecture Decision Records #
-## ADR-004-Validação-Pipeline NLP ##
+## ADR-004-Validação-Pipeline-NLP ##
 
 Data: 17-03-2026
 
-## Validação de Pipeline NLP #
+## Validação de Pipeline NLP ##
 
 **Contexto e Objetivo**
 
