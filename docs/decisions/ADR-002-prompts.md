@@ -1,4 +1,4 @@
-# Architecture Decision Records
+# Architecture Decision Records #
 ## ADR-002-arquitetura-orientada-prompts ##
 
 Data: 11-03-2026
@@ -20,6 +20,7 @@ Arquitetura orientada  a prompts;
 :small_orange_diamond:**Status de maturidade**
 
 :small_orange_diamond:Arquitetura atual -  antes de organizar prompts
+```
 
 Sites de Receitas (YAML config)
     ↓
@@ -38,7 +39,7 @@ Storage Layer → GCS + BigQuery
 RAG Pipeline → Busca + geração de resposta
 
 Orquestracao: Apache Airflow DAG com agendamento diario.
-
+```
 
 :small_orange_diamond:**Estrutura de Arquivos atual**
 
