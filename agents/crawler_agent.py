@@ -7,7 +7,8 @@ import time
 
 logger = logging.getLogger(__name__)
 
-
+# 01 - O CrawlerAgent é o ponto de entrada do pipeline 
+# ele é responsável por descobrir e coletar URLs que serão processadas nas etapas seguintes
 class CrawlerAgent:
     def __init__(self, config_path="config/sources.yaml"):
         with open(config_path, "r") as f:

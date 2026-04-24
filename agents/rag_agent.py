@@ -1,3 +1,13 @@
+
+
+"""
+O RAG Agent é o ponto de chegada do pipeline. Ele une tudo que foi preparado pelos agentes anteriores para responder
+perguntas com precisão e embasamento.
+RAG significa Retrieval-Augmented Generation: primeiro recupera contexto relevante,
+depois gera a resposta com base nesse contexto.
+"""
+
+
 class RAGAgent:
     def answer(self, question, context_chunks):
         # placeholder simples

@@ -8,6 +8,13 @@ from bs4 import BeautifulSoup
 import spacy
 from sentence_transformers import SentenceTransformer
 
+# 03 - O ProcessingAgent é o cérebro linguístico do pipeline — ele pega o HTML bruto coletado e
+# transforma em texto limpo e estruturado, pronto para virar vetor.
+# O que ele faz:
+# Recebe os arquivos HTML do GCS (Google Cloud Storage), 
+# processa com técnicas de NLP e devolve chunks de texto normalizados para o EmbeddingAgent.
+
+
 # ── Constantes para parsing de ingredientes ───────────────────────────────────
 # Unidades de medida em português (ordem: mais longas primeiro — evita match parcial)
 _UNITS = "|".join([
